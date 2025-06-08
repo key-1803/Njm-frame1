@@ -1,0 +1,121 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3-Cut Photo Booth</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #fff0f5;
+      text-align: center;
+      padding: 20px;
+    }
+    video {
+      width: 300px;
+      height: 400px;
+      object-fit: cover;
+      transform: scaleX(-1);
+      border: 2px solid #ffb6c1;
+      border-radius: 10px;
+    }
+    canvas {
+      display: none;
+    }
+    #countdown {
+      font-size: 80px;
+      color: red;
+      display: none;
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    #controls {
+      margin-top: 20px;
+    }
+    button {
+      font-size: 18px;
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 20px;
+      background-color: #ffb6c1;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>3-Cut Photo Booth</h1>
+  <div style="position: relative; display: inline-block;">
+    <video id="video" autoplay playsinline muted></video>
+    <div id="countdown">3</div>
+  </div>
+  <div id="controls">
+    <button id="start">Start</button>
+    <button id="download">Download</button>
+  </div>
+  <canvas id="capture" width="731" height="2048"></canvas>
+  <script>
+    const video = document.getElementById('video');
+    const countdown = document.getElementById('countdown');
+    const canvas = document.getElementById('capture');
+    const ctx = canvas.getContext('2d');
+    let photos = [];
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+      .then(stream => {
+        video.srcObject = stream;
+      });
+
+    async function countdownAndCapture() {
+      for (let i = 3; i > 0; i--) {
+        countdown.innerText = i;
+        countdown.style.display = 'block';
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      countdown.style.display = 'none';
+      let temp = document.createElement('canvas');
+      temp.width = video.videoWidth;
+      temp.height = video.videoHeight;
+      temp.getContext('2d').translate(temp.width, 0);
+      temp.getContext('2d').scale(-1, 1);
+      temp.getContext('2d').drawImage(video, 0, 0);
+      photos.push(temp);
+    }
+
+    document.getElementById('start').addEventListener('click', async () => {
+      photos = [];
+      for (let i = 0; i < 3; i++) {
+        await countdownAndCapture();
+      }
+      let frameImg = new Image();
+      frameImg.src = '3cut_frame.png';
+      frameImg.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Posisi hasil crop berdasarkan desain kamu
+        const boxes = [
+          [50, 120, 631, 410],
+          [50, 700, 631, 410],
+          [50, 1275, 631, 410]
+        ];
+        for (let i = 0; i < 3; i++) {
+          ctx.drawImage(photos[i], 0, 0, photos[i].width, photos[i].height,
+                        boxes[i][0], boxes[i][1], boxes[i][2], boxes[i][3]);
+        }
+        ctx.drawImage(frameImg, 0, 0);
+        alert("Foto selesai! Klik Download untuk menyimpan.");
+      };
+    });
+
+    document.getElementById('download').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = '3cut_photobooth.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    });
+  </script>
+</body>
+</html>
